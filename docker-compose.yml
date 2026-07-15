@@ -1,0 +1,18 @@
+services:
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    environment:
+      MARKET_DATA_CONNECTOR: ${MARKET_DATA_CONNECTOR:-mock}
+      ALLOWED_ORIGINS: '["http://localhost:3000"]'
+      PORT: 8000
+    ports: ["8000:8000"]
+    healthcheck: { test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"], interval: 10s, timeout: 3s, retries: 5 }
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args: { API_BASE_URL: "http://api:8000" }
+    environment: { API_BASE_URL: "http://api:8000", PORT: 3000 }
+    ports: ["3000:3000"]
+    depends_on: { api: { condition: service_healthy } }
+

@@ -1,0 +1,11 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: [build, -f, apps/api/Dockerfile, -t, '${_REGION}-docker.pkg.dev/$PROJECT_ID/marketlens/api:$COMMIT_SHA', .]
+  - name: gcr.io/cloud-builders/docker
+    args: [push, '${_REGION}-docker.pkg.dev/$PROJECT_ID/marketlens/api:$COMMIT_SHA']
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args: [run, deploy, marketlens-api, '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/marketlens/api:$COMMIT_SHA', '--region=${_REGION}', '--platform=managed', '--service-account=marketlens-api@$PROJECT_ID.iam.gserviceaccount.com', '--min-instances=0', '--set-env-vars=MARKET_DATA_CONNECTOR=yahoo', --allow-unauthenticated]
+images: ['${_REGION}-docker.pkg.dev/$PROJECT_ID/marketlens/api:$COMMIT_SHA']
+substitutions: {_REGION: us-central1}
+

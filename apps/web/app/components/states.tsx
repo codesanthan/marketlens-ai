@@ -1,0 +1,3 @@
+export function ErrorState({ message }: { message:string }) { return <div role="alert" className="card border-red-800 text-red-300"><h2 className="font-semibold">Data unavailable</h2><p className="mt-2 text-sm">{message}</p></div> }
+export function EmptyState({ message }: { message:string }) { return <div className="card text-slate-400">{message}</div> }
+export function Freshness({ value }: { value:string }) { const stale=value === "stale" || value === "unavailable"; return <span className={`rounded-full px-2 py-1 text-xs ${stale ? "bg-amber-950 text-amber-300":"bg-emerald-950 text-emerald-300"}`}>{value.replaceAll("_", " ")}</span> }
