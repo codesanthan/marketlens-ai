@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="627" viewBox="0 0 1200 627" role="img" aria-labelledby="title desc">
+  <title id="title">AgentMesh architecture</title>
+  <desc id="desc">AgentMesh converts a YAML or Python workflow into a validated task graph. Research and critique run in parallel, analysis consumes their results, and a supervisor synthesizes an outcome. Replaceable Mock, OpenAI, Anthropic, and NVIDIA Nemotron providers sit below the orchestration layer. Execution state retains results, failures, memory, token usage, and estimated cost.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08101f"/>
+      <stop offset="1" stop-color="#111c33"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#4f8cff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#020617" flood-opacity=".35"/>
+    </filter>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#72819d"/>
+    </marker>
+    <style>
+      .eyebrow{font:600 13px Inter,Arial,sans-serif;letter-spacing:2px;fill:#7da2f8}.title{font:700 31px Inter,Arial,sans-serif;fill:#f8fafc}.subtitle{font:400 15px Inter,Arial,sans-serif;fill:#9aa9c1}.section{font:600 11px Inter,Arial,sans-serif;letter-spacing:1.6px;fill:#7f90ad}.label{font:600 15px Inter,Arial,sans-serif;fill:#f8fafc}.detail{font:400 11px Inter,Arial,sans-serif;fill:#a9b6ca}.small{font:600 10px Inter,Arial,sans-serif;letter-spacing:1px;fill:#c8d6f0}.card{fill:#14213a;stroke:#2b3c5c;stroke-width:1}.agent{fill:#17283f;stroke:#37606f;stroke-width:1}.state{fill:#18283a;stroke:#2d645d;stroke-width:1}.group{fill:#0d1729;stroke:#30415f;stroke-width:1;stroke-dasharray:4 4}.edge{fill:none;stroke:#72819d;stroke-width:1.6;marker-end:url(#arrow)}.edgeBlue{stroke:#4f8cff;stroke-width:2.2}.road{fill:none;stroke:#52627d;stroke-width:1;stroke-dasharray:5 5}
+    </style>
+  </defs>
+
+  <rect width="1200" height="627" rx="24" fill="url(#bg)"/>
+  <circle cx="1068" cy="-8" r="245" fill="#2563eb" opacity=".07"/>
+  <circle cx="118" cy="620" r="210" fill="#14b8a6" opacity=".045"/>
+
+  <text x="48" y="49" class="eyebrow">AGENTMESH</text>
+  <text x="48" y="85" class="title">From agent prompts to accountable execution</text>
+  <text x="48" y="111" class="subtitle">Structure determines concurrency. Provider choice determines intelligence. State creates accountability.</text>
+
+  <text x="48" y="157" class="section">01 · INTENT</text>
+  <text x="270" y="157" class="section">02 · COORDINATION</text>
+  <text x="922" y="157" class="section">03 · ACCOUNTABILITY</text>
+
+  <g filter="url(#shadow)">
+    <rect x="48" y="178" width="178" height="100" rx="14" fill="url(#blue)"/>
+    <text x="137" y="213" text-anchor="middle" class="label">Workflow</text>
+    <text x="137" y="238" text-anchor="middle" class="detail" fill="#dce8ff">YAML or Python</text>
+    <text x="137" y="260" text-anchor="middle" class="detail" fill="#dce8ff">tasks · owners · dependencies</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="270" y="178" width="188" height="100" rx="14" class="card"/>
+    <text x="364" y="213" text-anchor="middle" class="label">Validate first</text>
+    <text x="364" y="238" text-anchor="middle" class="detail">reject missing inputs + cycles</text>
+    <text x="364" y="260" text-anchor="middle" class="detail">compute execution waves</text>
+  </g>
+  <path d="M226 228H270" class="edge edgeBlue"/>
+
+  <rect x="498" y="166" width="376" height="314" rx="18" class="group"/>
+  <text x="520" y="193" class="section">VALIDATED TASK GRAPH</text>
+
+  <rect x="520" y="222" width="135" height="71" rx="12" class="agent"/>
+  <text x="587" y="252" text-anchor="middle" class="label">Researcher</text>
+  <text x="587" y="276" text-anchor="middle" class="detail">independent task</text>
+
+  <rect x="520" y="330" width="135" height="71" rx="12" class="agent"/>
+  <text x="587" y="360" text-anchor="middle" class="label">Critic</text>
+  <text x="587" y="384" text-anchor="middle" class="detail">independent task</text>
+
+  <rect x="709" y="269" width="137" height="71" rx="12" class="agent"/>
+  <text x="777" y="299" text-anchor="middle" class="label">Analyst</text>
+  <text x="777" y="323" text-anchor="middle" class="detail">depends on both</text>
+
+  <rect x="709" y="379" width="137" height="71" rx="12" fill="url(#blue)"/>
+  <text x="777" y="409" text-anchor="middle" class="label">Supervisor</text>
+  <text x="777" y="433" text-anchor="middle" class="detail" fill="#dce8ff">explicit synthesis</text>
+
+  <rect x="525" y="205" width="72" height="21" rx="10" fill="#213a67"/>
+  <text x="561" y="220" text-anchor="middle" class="small">WAVE 1</text>
+  <rect x="714" y="252" width="72" height="21" rx="10" fill="#213a67"/>
+  <text x="750" y="267" text-anchor="middle" class="small">WAVE 2</text>
+
+  <path d="M458 228H480Q490 228 498 257H520" class="edge edgeBlue"/>
+  <path d="M458 228H480V365H520" class="edge edgeBlue"/>
+  <path d="M655 257H681Q696 257 709 304" class="edge"/>
+  <path d="M655 365H681Q696 365 709 304" class="edge"/>
+  <path d="M777 340V379" class="edge edgeBlue"/>
+
+  <g filter="url(#shadow)">
+    <rect x="922" y="178" width="230" height="272" rx="16" class="state"/>
+    <text x="946" y="210" class="label">Execution state</text>
+    <text x="946" y="233" class="detail">The run remains inspectable</text>
+    <line x1="946" y1="249" x2="1128" y2="249" stroke="#355160"/>
+    <text x="946" y="279" class="label">✓  Results</text>
+    <text x="946" y="312" class="label">!  Failures</text>
+    <text x="946" y="345" class="label">↻  Agent memory</text>
+    <text x="946" y="378" class="label">#  Token usage</text>
+    <text x="946" y="411" class="label">$  Estimated cost</text>
+    <rect x="946" y="421" width="182" height="22" rx="11" fill="#17463f"/>
+    <text x="1037" y="436" text-anchor="middle" class="small">TRACEABLE OUTCOME</text>
+  </g>
+  <path d="M846 414H922" class="edge edgeBlue"/>
+
+  <text x="48" y="520" class="section">REPLACEABLE INTELLIGENCE</text>
+  <rect x="48" y="539" width="826" height="55" rx="14" class="group"/>
+  <rect x="66" y="550" width="174" height="33" rx="10" class="card"/>
+  <text x="153" y="572" text-anchor="middle" class="label">Provider interface</text>
+  <rect x="270" y="550" width="105" height="33" rx="10" class="card"/>
+  <text x="322" y="572" text-anchor="middle" class="label">Mock</text>
+  <rect x="399" y="550" width="110" height="33" rx="10" class="card"/>
+  <text x="454" y="572" text-anchor="middle" class="label">OpenAI</text>
+  <rect x="533" y="550" width="130" height="33" rx="10" class="card"/>
+  <text x="598" y="572" text-anchor="middle" class="label">Anthropic</text>
+  <rect x="687" y="550" width="145" height="33" rx="10" class="card"/>
+  <text x="759" y="572" text-anchor="middle" class="label">Nemotron</text>
+  <path d="M240 566H270M375 566H399M509 566H533M663 566H687" class="edge"/>
+  <path d="M686 480V513H153V539" class="edge" stroke-dasharray="5 5"/>
+
+  <text x="922" y="520" class="section">ROADMAP</text>
+  <rect x="922" y="539" width="230" height="55" rx="14" class="road"/>
+  <text x="938" y="562" class="detail">retry · resumable state</text>
+  <text x="938" y="582" class="detail">async providers · streaming</text>
+</svg>

@@ -10,9 +10,11 @@ from fastapi.responses import JSONResponse
 
 from packages.connectors.base.connector import MarketDataConnector
 from packages.connectors.base.models import OptionChain
+from packages.connectors.sec import SecFactsConnector
+from packages.connectors.sec.exceptions import SecConnectorError
 from packages.connectors.yahoo.exceptions import YahooConnectorError
 
-from .dependencies import get_connector
+from .dependencies import get_connector, get_sec_connector
 from .logging_config import configure_logging
 from .settings import MVP_SYMBOLS, get_settings
 
@@ -45,6 +47,15 @@ async def connector_error(request: Request, exc: YahooConnectorError) -> JSONRes
                                                   "responseTimestamp": _now()})
 
 
+@app.exception_handler(SecConnectorError)
+async def sec_connector_error(request: Request, exc: SecConnectorError) -> JSONResponse:
+    logger.warning("sec_connector_request_failed", extra={"request_id": request.state.request_id,
+                                                           "error_type": type(exc).__name__})
+    return JSONResponse(status_code=503, content={"detail": str(exc),
+                                                  "warning": "SEC facts unavailable",
+                                                  "responseTimestamp": _now()})
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -57,6 +68,7 @@ def _symbol(value: str) -> str:
 
 
 Connector = Annotated[MarketDataConnector, Depends(get_connector)]
+SecConnector = Annotated[SecFactsConnector, Depends(get_sec_connector)]
 
 
 @app.get("/health")
@@ -78,16 +90,19 @@ async def version() -> dict[str, str]:
 
 
 @app.get("/api/v1/connectors")
-async def connectors(connector: Connector) -> dict[str, Any]:
-    return {"connectors": [(await connector.health()).model_dump(mode="json")], "responseTimestamp": _now()}
+async def connectors(connector: Connector, sec: SecConnector) -> dict[str, Any]:
+    statuses = await asyncio.gather(connector.health(), sec.health())
+    return {"connectors": [status.model_dump(mode="json") for status in statuses],
+            "responseTimestamp": _now()}
 
 
 @app.get("/api/v1/market/overview")
 async def overview(connector: Connector) -> dict[str, Any]:
-    results = await asyncio.gather(*(connector.get_quote(symbol) for symbol in MVP_SYMBOLS),
+    symbols = settings.overview_symbols
+    results = await asyncio.gather(*(connector.get_quote(symbol) for symbol in symbols),
                                    return_exceptions=True)
     quotes, warnings = [], []
-    for symbol, result in zip(MVP_SYMBOLS, results, strict=True):
+    for symbol, result in zip(symbols, results, strict=True):
         if isinstance(result, BaseException):
             warnings.append(f"{symbol}: {type(result).__name__}")
         else:
@@ -126,3 +141,10 @@ async def options(symbol: str, connector: Connector, expiration: str | None = No
     return {"expirations": expirations.model_dump(mode="json", by_alias=True),
             "chain": chain.model_dump(mode="json", by_alias=True) if chain else None,
             "summary": _summary(chain) if chain else None, "responseTimestamp": _now()}
+
+
+@app.get("/api/v1/sec/tickers/{symbol}/facts")
+async def sec_facts(symbol: str, sec: SecConnector) -> dict[str, Any]:
+    result = await sec.get_company_facts(_symbol(symbol))
+    return {"companyFacts": result.model_dump(mode="json", by_alias=True),
+            "responseTimestamp": _now()}

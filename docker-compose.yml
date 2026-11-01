@@ -3,6 +3,9 @@ services:
     build: { context: ., dockerfile: apps/api/Dockerfile }
     environment:
       MARKET_DATA_CONNECTOR: ${MARKET_DATA_CONNECTOR:-mock}
+      MARKET_OVERVIEW_SYMBOLS: ${MARKET_OVERVIEW_SYMBOLS:-SPY,QQQ,NVDA,AAPL,MSFT,AMZN,META,TSLA}
+      SEC_USER_AGENT: ${SEC_USER_AGENT:-MarketLensAI/0.2 local@example.com}
+      SEC_CACHE_TTL_SECONDS: ${SEC_CACHE_TTL_SECONDS:-3600}
       ALLOWED_ORIGINS: '["http://localhost:3000"]'
       PORT: 8000
     ports: ["8000:8000"]
@@ -15,4 +18,3 @@ services:
     environment: { API_BASE_URL: "http://api:8000", PORT: 3000 }
     ports: ["3000:3000"]
     depends_on: { api: { condition: service_healthy } }
-

@@ -1,7 +1,8 @@
 # MarketLens AI — Milestone 1
 
-GCP-native market research foundation with a Next.js dashboard, FastAPI API, and replaceable Yahoo
-Finance/mock connectors. Data is for research and educational use only, not investment advice.
+GCP-native market research foundation with a Next.js dashboard, FastAPI API, replaceable Yahoo
+Finance/mock market connectors, and normalized SEC EDGAR Company Facts. Data is for research and
+educational use only, not investment advice.
 
 ## Start locally
 
@@ -10,6 +11,8 @@ Requires Python 3.12, Node 20, and Docker. Copy `.env.example` to `.env` (never 
 http://localhost:3000; the API is at http://localhost:8000. Stop with `make docker-down`.
 
 Select `MARKET_DATA_CONNECTOR=mock` for deterministic data or `yahoo` for live/latest Yahoo data.
+Use `MARKET_OVERVIEW_SYMBOLS=SPY` to limit dashboard quote requests while retaining all ticker routes.
+Set `SEC_USER_AGENT` to an application name and monitored contact email before using SEC data.
 Configure `ALLOWED_ORIGINS`, connector timeout/retries/cache TTL, `API_BASE_URL` (server-side web
 container), and `NEXT_PUBLIC_API_BASE_URL` only if browser-visible API access is later required.
 
@@ -22,8 +25,8 @@ apps/api                  FastAPI application
 packages/connectors/base  connector contract and normalized models
 packages/connectors/yahoo Yahoo Finance adapter
 packages/connectors/mock  deterministic development adapter
+packages/connectors/sec   official SEC Company Facts adapter
 docs                      operations and design documentation
 infra/gcp                 GCP bootstrap
 tests                     API and connector tests
 ```
-

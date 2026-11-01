@@ -1,10 +1,19 @@
+from unittest.mock import AsyncMock
+
 from fastapi.testclient import TestClient
 
-from apps.api.dependencies import get_connector
+from apps.api.dependencies import get_connector, get_sec_connector
 from apps.api.main import app
+from apps.api.settings import get_settings
 from packages.connectors.mock import MockMarketDataConnector
+from packages.connectors.sec.connector import SecFactsConnector
+from packages.connectors.sec.tests.test_connector import payload
 
 app.dependency_overrides[get_connector] = MockMarketDataConnector
+sec_client = AsyncMock()
+sec_client.user_agent = "MarketLens tests@example.com"
+sec_client.company_facts.return_value = payload()
+app.dependency_overrides[get_sec_connector] = lambda: SecFactsConnector(sec_client)
 client = TestClient(app)
 
 
@@ -16,7 +25,7 @@ def test_health_and_ready() -> None:
 def test_overview() -> None:
     response = client.get("/api/v1/market/overview")
     assert response.status_code == 200
-    assert len(response.json()["quotes"]) == 8
+    assert len(response.json()["quotes"]) == len(get_settings().overview_symbols)
 
 
 def test_ticker_and_invalid_symbol() -> None:
@@ -35,3 +44,10 @@ def test_version_and_connectors() -> None:
     assert client.get("/api/v1/version").json()["version"] == "0.1.0"
     assert client.get("/api/v1/connectors").json()["connectors"][0]["healthy"] is True
 
+
+def test_sec_company_facts() -> None:
+    response = client.get("/api/v1/sec/tickers/AAPL/facts")
+    assert response.status_code == 200
+    facts = response.json()["companyFacts"]
+    assert facts["provider"] == "sec_edgar"
+    assert facts["facts"][0]["metric"] == "revenue"

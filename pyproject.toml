@@ -1,6 +1,6 @@
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["tests", "packages/connectors/yahoo/tests"]
+testpaths = ["tests", "packages/connectors/yahoo/tests", "packages/connectors/sec/tests"]
 addopts = "--cov=apps.api --cov=packages.connectors --cov-report=term-missing --cov-fail-under=80"
 [tool.ruff]
 target-version = "py312"
