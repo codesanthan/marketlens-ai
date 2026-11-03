@@ -7,7 +7,7 @@ from packages.connectors.sec.client import SecClient
 from packages.connectors.yahoo import YahooMarketDataConnector
 from packages.connectors.yahoo.client import YahooClient
 
-from .settings import MVP_SYMBOLS, get_settings
+from .settings import get_settings
 
 
 @lru_cache
@@ -18,7 +18,7 @@ def get_connector() -> MarketDataConnector:
     if settings.market_data_connector == "yahoo":
         return YahooMarketDataConnector(
             YahooClient(settings.connector_timeout_seconds, settings.connector_retries),
-            set(MVP_SYMBOLS), settings.connector_cache_ttl_seconds,
+            settings.connector_cache_ttl_seconds,
         )
     raise RuntimeError(f"Unknown connector: {settings.market_data_connector}")
 

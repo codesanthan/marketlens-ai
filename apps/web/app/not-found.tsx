@@ -1,1 +1,1 @@
-export default function NotFound(){return <div className="card"><h1 className="text-2xl font-bold">Ticker not found</h1><p className="mt-2 text-slate-400">This symbol is not included in the MarketLens MVP allowlist.</p></div>}
+export default function NotFound(){return <div className="card"><h1 className="text-2xl font-bold">Ticker not found</h1><p className="mt-2 text-slate-400">Check the symbol and try again. MarketLens covers US-listed stocks and ETFs.</p></div>}

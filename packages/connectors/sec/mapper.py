@@ -6,13 +6,17 @@ from packages.connectors.base.models import Freshness
 from .models import CompanyFacts, FinancialFact
 
 CONCEPTS: dict[str, tuple[str, tuple[str, ...]]] = {
-    "revenue": ("Revenue", ("RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues")),
+    "revenue": ("Revenue", ("RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues",
+                            "RevenuesNetOfInterestExpense")),
     "net_income": ("Net income", ("NetIncomeLoss",)),
     "diluted_eps": ("Diluted EPS", ("EarningsPerShareDiluted",)),
     "assets": ("Total assets", ("Assets",)),
     "liabilities": ("Total liabilities", ("Liabilities",)),
-    "cash": ("Cash and equivalents", ("CashAndCashEquivalentsAtCarryingValue",)),
+    "cash": ("Cash and equivalents", ("CashAndCashEquivalentsAtCarryingValue",
+                                      "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+                                      "CashAndDueFromBanks")),
 }
+STALE_AFTER_DAYS = 366
 PREFERRED_UNITS = ("USD", "USD/shares", "shares", "pure")
 FORMS = {"10-K", "10-K/A", "10-Q", "10-Q/A", "20-F", "20-F/A", "40-F", "40-F/A"}
 
@@ -45,6 +49,12 @@ def map_company_facts(payload: dict[str, Any], symbol: str) -> CompanyFacts:
             continue
         mapped.append(fact)
         latest_filed = max(latest_filed, fact.filed_at) if latest_filed else fact.filed_at
+    # A tag the company stopped using leaves an old value behind (JPMorgan's cash ends in 2018);
+    # drop anything more than a year older than the newest period rather than show it as current.
+    if mapped:
+        newest = max(fact.period_end for fact in mapped)
+        mapped = [fact for fact in mapped if (newest - fact.period_end).days <= STALE_AFTER_DAYS]
+        latest_filed = max(fact.filed_at for fact in mapped)
     warnings = [] if mapped else ["No supported SEC financial facts were available"]
     as_of = datetime.combine(latest_filed, datetime.min.time(), timezone.utc) if latest_filed else None
     freshness = Freshness.LIVE_OR_RECENT if latest_filed else Freshness.UNAVAILABLE

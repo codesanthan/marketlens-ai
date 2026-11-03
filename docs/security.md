@@ -1,7 +1,7 @@
 # Security
 
 The frontend receives no connector credentials. Secrets belong in Secret Manager and Cloud Run
-runtime configuration, never `NEXT_PUBLIC_*` values. The API allowlists ticker symbols, constrains
+runtime configuration, never `NEXT_PUBLIC_*` values. The API validates ticker symbol format, constrains
 periods, caps request/correlation IDs, configures specific CORS origins, uses timeouts/retries, and
 logs event metadata rather than external payloads. Containers run as non-root users. Production
 SEC access must identify the application with a monitored contact address in `SEC_USER_AGENT` and

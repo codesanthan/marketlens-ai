@@ -1,14 +1,14 @@
 import time
 
 from packages.connectors.base.models import ConnectorStatus
+from packages.connectors.base.symbols import SymbolNotFoundError, normalize_symbol
 
 from .client import SecClient
 from .mapper import map_company_facts
 from .models import CompanyFacts
 
-CIKS = {"SPY": "0000884394", "QQQ": "0001067839", "NVDA": "0001045810",
-        "AAPL": "0000320193", "MSFT": "0000789019", "AMZN": "0001018724",
-        "META": "0001326801", "TSLA": "0001318605"}
+# The SEC ticker file changes rarely; refresh it daily.
+TICKER_MAP_TTL_SECONDS = 24 * 60 * 60
 
 
 class SecFactsConnector:
@@ -17,15 +17,22 @@ class SecFactsConnector:
     def __init__(self, client: SecClient, cache_ttl: int = 3600) -> None:
         self.client, self.cache_ttl = client, cache_ttl
         self._cache: dict[str, tuple[float, CompanyFacts]] = {}
+        self._ciks: tuple[float, dict[str, str]] | None = None
+
+    async def _cik(self, symbol: str) -> str:
+        if not self._ciks or time.monotonic() - self._ciks[0] >= TICKER_MAP_TTL_SECONDS:
+            self._ciks = (time.monotonic(), await self.client.ticker_ciks())
+        cik = self._ciks[1].get(symbol)
+        if not cik:
+            raise SymbolNotFoundError(f"SEC has no company filings for {symbol}")
+        return cik
 
     async def get_company_facts(self, symbol: str) -> CompanyFacts:
-        symbol = symbol.strip().upper()
-        if symbol not in CIKS:
-            raise ValueError(f"Unsupported symbol: {symbol}")
+        symbol = normalize_symbol(symbol)
         cached = self._cache.get(symbol)
         if cached and time.monotonic() - cached[0] < self.cache_ttl:
             return cached[1]
-        result = map_company_facts(await self.client.company_facts(CIKS[symbol]), symbol)
+        result = map_company_facts(await self.client.company_facts(await self._cik(symbol)), symbol)
         self._cache[symbol] = (time.monotonic(), result)
         return result
 

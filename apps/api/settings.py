@@ -3,7 +3,10 @@ from functools import lru_cache
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-MVP_SYMBOLS = ("SPY", "QQQ", "NVDA", "AAPL", "MSFT", "AMZN", "META", "TSLA")
+from packages.connectors.base.symbols import normalize_symbol
+
+DEFAULT_OVERVIEW_SYMBOLS = ("SPY", "QQQ", "NVDA", "AAPL", "MSFT", "AMZN", "META", "TSLA")
+MAX_OVERVIEW_SYMBOLS = 20
 
 
 class Settings(BaseSettings):
@@ -13,7 +16,7 @@ class Settings(BaseSettings):
     connector_timeout_seconds: float = 10
     connector_retries: int = 2
     connector_cache_ttl_seconds: int = 30
-    market_overview_symbols: str = ",".join(MVP_SYMBOLS)
+    market_overview_symbols: str = ",".join(DEFAULT_OVERVIEW_SYMBOLS)
     sec_user_agent: str = "MarketLensAI/0.2 local@example.com"
     sec_cache_ttl_seconds: int = 3600
 
@@ -25,12 +28,11 @@ class Settings(BaseSettings):
     @field_validator("market_overview_symbols")
     @classmethod
     def validate_overview_symbols(cls, value: str) -> str:
-        symbols = tuple(symbol.strip().upper() for symbol in value.split(",") if symbol.strip())
+        symbols = tuple(normalize_symbol(symbol) for symbol in value.split(",") if symbol.strip())
         if not symbols:
             raise ValueError("At least one market overview symbol is required")
-        unsupported = set(symbols) - set(MVP_SYMBOLS)
-        if unsupported:
-            raise ValueError(f"Unsupported market overview symbols: {sorted(unsupported)}")
+        if len(set(symbols)) > MAX_OVERVIEW_SYMBOLS:
+            raise ValueError(f"At most {MAX_OVERVIEW_SYMBOLS} market overview symbols are supported")
         return ",".join(dict.fromkeys(symbols))
 
     @property

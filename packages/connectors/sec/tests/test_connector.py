@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
+from packages.connectors.base.symbols import SymbolNotFoundError
 from packages.connectors.sec.client import SecClient
 from packages.connectors.sec.connector import SecFactsConnector
 from packages.connectors.sec.exceptions import SecRateLimitError, SecUnavailableError
@@ -52,6 +53,18 @@ def test_quarter_preferred_over_year_to_date_for_same_end() -> None:
     assert map_company_facts(data, "X").facts[0].value == 60
 
 
+def test_bank_tags_and_stale_values_are_handled() -> None:
+    data = {"cik": 19617, "entityName": "JPMORGAN CHASE & CO", "facts": {"us-gaap": {
+        "RevenuesNetOfInterestExpense": {"units": {"USD": [
+            {"val": 45, "start": "2026-04-01", "end": "2026-06-30", "filed": "2026-08-01",
+             "form": "10-Q", "fy": 2026, "fp": "Q2"}]}},
+        "CashAndCashEquivalentsAtCarryingValue": {"units": {"USD": [
+            {"val": 26, "end": "2018-12-31", "filed": "2019-02-26", "form": "10-K", "fy": 2018, "fp": "FY"}]}},
+    }}}
+    facts = map_company_facts(data, "JPM").facts
+    assert [(fact.metric, fact.value) for fact in facts] == [("revenue", 45)]
+
+
 def test_missing_fields_are_skipped() -> None:
     result = map_company_facts({"cik": 1, "facts": {}}, "SPY")
     assert result.facts == [] and result.warnings
@@ -61,12 +74,18 @@ def test_missing_fields_are_skipped() -> None:
 async def test_connector_caches_and_validates() -> None:
     client = AsyncMock()
     client.company_facts.return_value = payload()
+    client.ticker_ciks.return_value = {"AAPL": "0000320193", "BRK-B": "0001067983"}
     connector = SecFactsConnector(client)
     await connector.get_company_facts("AAPL")
     await connector.get_company_facts("AAPL")
-    client.company_facts.assert_awaited_once()
+    client.company_facts.assert_awaited_once_with("0000320193")
+    await connector.get_company_facts("brk.b")
+    client.company_facts.assert_awaited_with("0001067983")
+    client.ticker_ciks.assert_awaited_once()
     with pytest.raises(ValueError):
-        await connector.get_company_facts("BAD")
+        await connector.get_company_facts("B@D!")
+    with pytest.raises(SymbolNotFoundError):
+        await connector.get_company_facts("SPY")
 
 
 @pytest.mark.asyncio
@@ -91,3 +110,16 @@ async def test_client_maps_sec_errors(status: int, error: type[Exception]) -> No
     transport = httpx.MockTransport(lambda request: httpx.Response(status))
     with pytest.raises(error):
         await SecClient("MarketLens test@example.com", transport=transport).company_facts("320193")
+
+
+@pytest.mark.asyncio
+async def test_client_loads_ticker_map_and_maps_404_to_not_found() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("company_tickers.json"):
+            return httpx.Response(200, json={"0": {"cik_str": 320193, "ticker": "AAPL", "title": "Apple Inc."},
+                                             "1": {"cik_str": 1067983, "ticker": "BRK-B", "title": "Berkshire"}})
+        return httpx.Response(404)
+    client = SecClient("MarketLens test@example.com", transport=httpx.MockTransport(handler))
+    assert await client.ticker_ciks() == {"AAPL": "0000320193", "BRK-B": "0001067983"}
+    with pytest.raises(SymbolNotFoundError):
+        await client.company_facts("884394")

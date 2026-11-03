@@ -12,6 +12,7 @@ from packages.connectors.base.models import (
     PriceHistory,
     Quote,
 )
+from packages.connectors.base.symbols import SymbolNotFoundError, normalize_symbol
 
 SYMBOLS = ("SPY", "QQQ", "NVDA", "AAPL", "MSFT", "AMZN", "META", "TSLA")
 PRICES = {symbol: 100.0 + index * 37.5 for index, symbol in enumerate(SYMBOLS)}
@@ -20,24 +21,30 @@ PRICES = {symbol: 100.0 + index * 37.5 for index, symbol in enumerate(SYMBOLS)}
 class MockMarketDataConnector(MarketDataConnector):
     provider = "mock"
 
+    def _price(self, symbol: str) -> float:
+        symbol = normalize_symbol(symbol)
+        if symbol not in PRICES:
+            raise SymbolNotFoundError(f"Mock data has no listing for {symbol}")
+        return PRICES[symbol]
+
     def _now(self) -> datetime:
         return datetime.now(timezone.utc)
 
     async def get_quote(self, symbol: str) -> Quote:
-        now, price = self._now(), PRICES[symbol]
+        now, price = self._now(), self._price(symbol)
         return Quote(provider=self.provider, as_of=now, freshness=Freshness.LIVE_OR_RECENT,
                      symbol=symbol, price=price, change=1.25, change_percent=0.5,
                      volume=1_250_000, market_cap=2_000_000_000)
 
     async def get_company_profile(self, symbol: str) -> CompanyProfile:
-        now, price = self._now(), PRICES[symbol]
+        now, price = self._now(), self._price(symbol)
         return CompanyProfile(provider=self.provider, as_of=now, freshness=Freshness.LIVE_OR_RECENT,
                               symbol=symbol, company_name=f"{symbol} Mock Company",
                               market_cap=2_000_000_000, fifty_two_week_high=price * 1.2,
                               fifty_two_week_low=price * .7, average_volume=1_000_000)
 
     async def get_price_history(self, symbol: str, period: str) -> PriceHistory:
-        now, price = self._now(), PRICES[symbol]
+        now, price = self._now(), self._price(symbol)
         bars = [PriceBar(timestamp=now - timedelta(days=29-i), open=price+i, high=price+i+2,
                          low=price+i-2, close=price+i+1, volume=1_000_000+i*1_000)
                 for i in range(30)]
@@ -51,7 +58,7 @@ class MockMarketDataConnector(MarketDataConnector):
                                  expirations=[(now + timedelta(days=30)).date().isoformat()])
 
     async def get_option_chain(self, symbol: str, expiration: str) -> OptionChain:
-        now, price = self._now(), PRICES[symbol]
+        now, price = self._now(), self._price(symbol)
         contract = OptionContract(contract_symbol=f"{symbol}MOCK", strike=price,
                                   last_price=5, volume=200, open_interest=500,
                                   implied_volatility=.25)

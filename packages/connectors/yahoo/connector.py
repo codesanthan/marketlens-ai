@@ -12,6 +12,7 @@ from packages.connectors.base.models import (
     PriceHistory,
     Quote,
 )
+from packages.connectors.base.symbols import SymbolNotFoundError, normalize_symbol
 
 from .client import YahooClient
 from .mapper import contracts, freshness, price_bars, timestamp
@@ -22,15 +23,20 @@ logger = logging.getLogger(__name__)
 class YahooMarketDataConnector(MarketDataConnector):
     provider = "yahoo_finance"
 
-    def __init__(self, client: YahooClient, allowed_symbols: set[str], cache_ttl: int = 30) -> None:
-        self.client, self.allowed_symbols, self.cache_ttl = client, allowed_symbols, cache_ttl
+    def __init__(self, client: YahooClient, cache_ttl: int = 30) -> None:
+        self.client, self.cache_ttl = client, cache_ttl
         self._cache: dict[str, tuple[float, Any]] = {}
 
     def _validate(self, symbol: str) -> str:
-        value = symbol.strip().upper()
-        if value not in self.allowed_symbols:
-            raise ValueError(f"Unsupported symbol: {symbol}")
-        return value
+        return normalize_symbol(symbol)
+
+    async def _info(self, symbol: str) -> dict[str, Any]:
+        info: dict[str, Any] = await self._cached(f"info:{symbol}", lambda: self.client.info(symbol))
+        # yfinance returns a near-empty dict (no quoteType, no name, no price) for unknown symbols.
+        if info and not any(info.get(key) for key in ("quoteType", "longName", "shortName",
+                                                      "regularMarketPrice", "currentPrice")):
+            raise SymbolNotFoundError(f"Yahoo Finance has no listing for {symbol}")
+        return info
 
     async def _cached(self, key: str, loader: Any) -> Any:
         item = self._cache.get(key)
@@ -46,7 +52,7 @@ class YahooMarketDataConnector(MarketDataConnector):
 
     async def get_quote(self, symbol: str) -> Quote:
         symbol = self._validate(symbol)
-        info = await self._cached(f"info:{symbol}", lambda: self.client.info(symbol))
+        info = await self._info(symbol)
         as_of = timestamp(info.get("regularMarketTime"))
         price = info.get("currentPrice", info.get("regularMarketPrice"))
         warnings = ["Latest price is unavailable"] if price is None else []
@@ -57,7 +63,7 @@ class YahooMarketDataConnector(MarketDataConnector):
 
     async def get_company_profile(self, symbol: str) -> CompanyProfile:
         symbol = self._validate(symbol)
-        info = await self._cached(f"info:{symbol}", lambda: self.client.info(symbol))
+        info = await self._info(symbol)
         as_of = timestamp(info.get("regularMarketTime"))
         return CompanyProfile(**self._meta(as_of, []), symbol=symbol,
                               company_name=info.get("longName") or info.get("shortName"),
@@ -70,6 +76,7 @@ class YahooMarketDataConnector(MarketDataConnector):
         symbol = self._validate(symbol)
         if period not in {"1mo", "3mo", "6mo", "1y"}:
             raise ValueError("Unsupported history period")
+        await self._info(symbol)
         frame = await self._cached(f"history:{symbol}:{period}",
                                    lambda: self.client.history(symbol, period))
         bars = price_bars(frame)
@@ -79,6 +86,7 @@ class YahooMarketDataConnector(MarketDataConnector):
 
     async def get_option_expirations(self, symbol: str) -> OptionExpirations:
         symbol = self._validate(symbol)
+        await self._info(symbol)
         values = await self._cached(f"options:{symbol}", lambda: self.client.options(symbol))
         warnings = ["No option expirations returned"] if not values else []
         return OptionExpirations(**self._meta(datetime.now(timezone.utc), warnings),

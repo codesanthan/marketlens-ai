@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from packages.connectors.base.models import Freshness
+from packages.connectors.base.symbols import SymbolNotFoundError
 from packages.connectors.yahoo.client import YahooClient
 from packages.connectors.yahoo.connector import YahooMarketDataConnector
 from packages.connectors.yahoo.exceptions import YahooTimeoutError
@@ -22,7 +23,7 @@ def info(**extra: object) -> dict[str, object]:
 async def test_normalizes_and_caches_quote() -> None:
     client = AsyncMock()
     client.info.return_value = info()
-    connector = YahooMarketDataConnector(client, {"SPY"}, 30)
+    connector = YahooMarketDataConnector(client, 30)
     assert (await connector.get_quote("SPY")).price == 100
     await connector.get_quote("SPY")
     client.info.assert_awaited_once()
@@ -32,24 +33,36 @@ async def test_normalizes_and_caches_quote() -> None:
 async def test_missing_fields_are_not_invented() -> None:
     client = AsyncMock()
     client.info.return_value = {}
-    quote = await YahooMarketDataConnector(client, {"SPY"}).get_quote("SPY")
+    quote = await YahooMarketDataConnector(client).get_quote("SPY")
     assert quote.price is None and quote.freshness == Freshness.UNAVAILABLE and quote.warnings
 
 
 @pytest.mark.asyncio
 async def test_invalid_symbol() -> None:
     with pytest.raises(ValueError):
-        await YahooMarketDataConnector(AsyncMock(), {"SPY"}).get_quote("BAD")
+        await YahooMarketDataConnector(AsyncMock()).get_quote("B@D!")
+
+
+@pytest.mark.asyncio
+async def test_any_listed_symbol_is_accepted_and_unknown_is_not_found() -> None:
+    client = AsyncMock()
+    client.info.side_effect = lambda symbol: (
+        {"quoteType": "EQUITY", "regularMarketPrice": 556.11} if symbol == "BRK-B" else {"trailingPegRatio": None})
+    connector = YahooMarketDataConnector(client)
+    assert (await connector.get_quote("brk.b")).price == 556.11
+    with pytest.raises(SymbolNotFoundError):
+        await connector.get_quote("ZZZQX")
 
 
 @pytest.mark.asyncio
 async def test_history_and_options_mapping() -> None:
     client = AsyncMock()
+    client.info.return_value = {"quoteType": "ETF"}
     index = pd.DatetimeIndex([datetime.now(timezone.utc)])
     client.history.return_value = pd.DataFrame([{"Open":1,"High":2,"Low":.5,"Close":1.5,"Volume":20}], index=index)
     frame = pd.DataFrame([{"contractSymbol":"SPY1","strike":100,"volume":2,"openInterest":3,"impliedVolatility":.2}])
     client.option_chain.return_value = SimpleNamespace(calls=frame, puts=frame)
-    connector = YahooMarketDataConnector(client, {"SPY"})
+    connector = YahooMarketDataConnector(client)
     assert (await connector.get_price_history("SPY", "1mo")).bars[0].close == 1.5
     assert (await connector.get_option_chain("SPY", "2030-01-01")).calls[0].open_interest == 3
 

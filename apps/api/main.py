@@ -10,13 +10,14 @@ from fastapi.responses import JSONResponse
 
 from packages.connectors.base.connector import MarketDataConnector
 from packages.connectors.base.models import OptionChain
+from packages.connectors.base.symbols import SymbolNotFoundError, normalize_symbol
 from packages.connectors.sec import SecFactsConnector
 from packages.connectors.sec.exceptions import SecConnectorError
 from packages.connectors.yahoo.exceptions import YahooConnectorError
 
 from .dependencies import get_connector, get_sec_connector
 from .logging_config import configure_logging
-from .settings import MVP_SYMBOLS, get_settings
+from .settings import get_settings
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -47,6 +48,11 @@ async def connector_error(request: Request, exc: YahooConnectorError) -> JSONRes
                                                   "responseTimestamp": _now()})
 
 
+@app.exception_handler(SymbolNotFoundError)
+async def symbol_not_found(request: Request, exc: SymbolNotFoundError) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": str(exc), "responseTimestamp": _now()})
+
+
 @app.exception_handler(SecConnectorError)
 async def sec_connector_error(request: Request, exc: SecConnectorError) -> JSONResponse:
     logger.warning("sec_connector_request_failed", extra={"request_id": request.state.request_id,
@@ -61,10 +67,10 @@ def _now() -> str:
 
 
 def _symbol(value: str) -> str:
-    symbol = value.upper()
-    if symbol not in MVP_SYMBOLS:
-        raise HTTPException(404, "Symbol is not in the MVP allowlist")
-    return symbol
+    try:
+        return normalize_symbol(value)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
 
 
 Connector = Annotated[MarketDataConnector, Depends(get_connector)]

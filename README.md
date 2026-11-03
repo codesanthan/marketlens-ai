@@ -10,9 +10,11 @@ Requires Python 3.12, Node 20, and Docker. Copy `.env.example` to `.env` (never 
 `make install`, then start the two commands printed by `make dev`. Or run `make docker-up` and open
 http://localhost:3000; the API is at http://localhost:8000. Stop with `make docker-down`.
 
-Milestone 1 supports eight symbols only: SPY, QQQ, NVDA, AAPL, MSFT, AMZN, META, and TSLA
-(`MVP_SYMBOLS` in `apps/api/settings.py`). Other symbols return 404. SPY and QQQ are ETFs, so
-they have no SEC Company Facts.
+Any US-listed stock or ETF works: use the search box in the header or open `/ticker/<SYMBOL>`.
+Symbols are 1-5 letters with an optional class suffix (`BRK.B` or `BRK-B`). Malformed symbols and
+symbols Yahoo or the SEC does not list return 404. SEC Company Facts come from the SEC's daily
+ticker-to-CIK file; ETFs and funds (SPY, QQQ) do not file them. `MARKET_OVERVIEW_SYMBOLS` sets
+the dashboard list (up to 20).
 
 Select `MARKET_DATA_CONNECTOR=mock` for deterministic data or `yahoo` for live/latest Yahoo data.
 Use `MARKET_OVERVIEW_SYMBOLS=SPY` to limit dashboard quote requests while retaining all ticker routes.

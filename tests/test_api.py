@@ -13,6 +13,7 @@ app.dependency_overrides[get_connector] = MockMarketDataConnector
 sec_client = AsyncMock()
 sec_client.user_agent = "MarketLens tests@example.com"
 sec_client.company_facts.return_value = payload()
+sec_client.ticker_ciks.return_value = {"AAPL": "0000320193"}
 app.dependency_overrides[get_sec_connector] = lambda: SecFactsConnector(sec_client)
 client = TestClient(app)
 
@@ -31,6 +32,7 @@ def test_overview() -> None:
 def test_ticker_and_invalid_symbol() -> None:
     assert client.get("/api/v1/tickers/SPY").json()["quote"]["symbol"] == "SPY"
     assert client.get("/api/v1/tickers/NOPE").status_code == 404
+    assert client.get("/api/v1/tickers/B@D!").status_code == 404
 
 
 def test_history_and_options_summary() -> None:
@@ -51,3 +53,4 @@ def test_sec_company_facts() -> None:
     facts = response.json()["companyFacts"]
     assert facts["provider"] == "sec_edgar"
     assert facts["facts"][0]["metric"] == "revenue"
+    assert client.get("/api/v1/sec/tickers/QQQ/facts").status_code == 404
