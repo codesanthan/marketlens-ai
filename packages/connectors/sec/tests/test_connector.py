@@ -30,6 +30,28 @@ def test_maps_latest_normalized_facts() -> None:
     assert result.facts[1].metric == "assets"
 
 
+def test_newest_tag_wins_when_company_switched_tags() -> None:
+    data = {"cik": 1045810, "entityName": "NVIDIA CORP", "facts": {"us-gaap": {
+        "RevenueFromContractWithCustomerExcludingAssessedTax": {"units": {"USD": [
+            {"val": 26, "start": "2021-02-01", "end": "2022-01-30", "filed": "2022-03-18",
+             "form": "10-K", "fy": 2022, "fp": "FY"}]}},
+        "Revenues": {"units": {"USD": [
+            {"val": 46, "start": "2026-04-27", "end": "2026-07-26", "filed": "2026-08-26",
+             "form": "10-Q", "fy": 2027, "fp": "Q2"}]}},
+    }}}
+    assert map_company_facts(data, "NVDA").facts[0].value == 46
+
+
+def test_quarter_preferred_over_year_to_date_for_same_end() -> None:
+    data = {"cik": 1, "entityName": "X", "facts": {"us-gaap": {"NetIncomeLoss": {"units": {"USD": [
+        {"val": 118, "start": "2026-01-26", "end": "2026-07-26", "filed": "2026-08-26",
+         "form": "10-Q", "fy": 2027, "fp": "Q2"},
+        {"val": 60, "start": "2026-04-27", "end": "2026-07-26", "filed": "2026-08-26",
+         "form": "10-Q", "fy": 2027, "fp": "Q2"},
+    ]}}}}}
+    assert map_company_facts(data, "X").facts[0].value == 60
+
+
 def test_missing_fields_are_skipped() -> None:
     result = map_company_facts({"cik": 1, "facts": {}}, "SPY")
     assert result.facts == [] and result.warnings

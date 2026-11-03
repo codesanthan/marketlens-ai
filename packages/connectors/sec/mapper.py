@@ -22,17 +22,19 @@ def map_company_facts(payload: dict[str, Any], symbol: str) -> CompanyFacts:
     latest_filed: date | None = None
     gaap = payload.get("facts", {}).get("us-gaap", {})
     for metric, (label, aliases) in CONCEPTS.items():
-        concept = next((gaap[tag] for tag in aliases if tag in gaap), None)
-        if not concept:
-            continue
-        units = concept.get("units", {})
-        unit = next((name for name in PREFERRED_UNITS if name in units), None)
-        if not unit:
-            continue
-        candidates = [item for item in units[unit] if item.get("form") in FORMS]
+        # Companies switch tags over time (NVIDIA moved from RevenueFromContract... to Revenues), so
+        # compare every alias and keep the most recent period rather than the first tag present.
+        candidates: list[tuple[str, dict[str, Any]]] = []
+        for tag in aliases:
+            units = gaap.get(tag, {}).get("units", {})
+            unit = next((name for name in PREFERRED_UNITS if name in units), None)
+            if unit:
+                candidates += [(unit, item) for item in units[unit] if item.get("form") in FORMS]
         if not candidates:
             continue
-        item = max(candidates, key=lambda value: (value.get("filed", ""), value.get("end", "")))
+        # Latest period end; for that end prefer the shortest span (the quarter over year-to-date),
+        # then the latest filing (restatements).
+        unit, item = max(candidates, key=lambda c: (c[1].get("end", ""), -_span_days(c[1]), c[1].get("filed", "")))
         try:
             fact = FinancialFact(metric=metric, label=label, value=float(item["val"]), unit=unit,
                                  period_start=_optional_date(item.get("start")), period_end=_date(item["end"]),
@@ -55,6 +57,13 @@ def _date(value: str | None) -> date:
     if not value:
         raise ValueError("Missing SEC fact date")
     return date.fromisoformat(value)
+
+
+def _span_days(item: dict[str, Any]) -> int:
+    try:
+        return (date.fromisoformat(item["end"]) - date.fromisoformat(item["start"])).days
+    except (KeyError, TypeError, ValueError):
+        return 0
 
 
 def _optional_date(value: str | None) -> date | None:
