@@ -5,7 +5,7 @@ quotes, company profiles, price history, option expirations, option chains, call
 open interest, and implied volatility.
 
 `YahooClient` owns blocking I/O, timeouts, and exponential retries. `YahooMarketDataConnector`
-validates the MVP allowlist and maintains a process-local TTL cache (30 seconds by default).
+validates ticker symbol format, reports unknown listings as not found, and maintains a process-local TTL cache (30 seconds by default).
 `mapper.py` converts Yahoo/pandas values without inventing missing data and classifies freshness.
 
 Yahoo Finance is an unofficial, best-effort data source. Fields may be missing, delayed, changed,
